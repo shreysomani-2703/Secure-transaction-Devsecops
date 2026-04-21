@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Data
+data/account_ids.json
+
+# Environment (never push real secrets)
+.env
+.env.docker
+
+# Docker
+*.log
