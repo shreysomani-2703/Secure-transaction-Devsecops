@@ -151,6 +151,7 @@ pipeline {
             steps {
                 echo '🚀 Deploying all services...'
                 sh '''
+            cp /home/shrey/Documents/SPE/SPE_PROJECT(1)/SPE_PROJECT/banking-devsecops/.env.docker .env.docker
                     docker compose down || true
                     docker compose up -d
                     echo "✅ Deployment complete"
