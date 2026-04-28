@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
-        DOCKERHUB_USERNAME = 'shrey1112'
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
@@ -11,25 +10,23 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo '📥 Checking out source code...'
+                echo 'Checking out source code...'
                 checkout scm
             }
         }
 
         stage('Unit Tests') {
             steps {
-                echo '🧪 Running unit tests for all services...'
+                echo 'Running unit tests for all services...'
                 sh '''
                     cd transaction-service
                     pip install -r requirements.txt --break-system-packages -q
                     pytest tests/ -v --tb=short
                     cd ..
-
                     cd fraud-detection-service
                     pip install -r requirements.txt --break-system-packages -q
                     pytest tests/ -v --tb=short
                     cd ..
-
                     cd notification-service
                     pip install -r requirements.txt --break-system-packages -q
                     pytest tests/ -v --tb=short
@@ -40,7 +37,7 @@ pipeline {
 
         stage('SAST Scan (Bandit)') {
             steps {
-                echo '🔍 Running Bandit static security analysis...'
+                echo 'Running Bandit static security analysis...'
                 sh '''
                     bandit -r transaction-service/app/ -f txt -o bandit-transaction.txt || true
                     bandit -r fraud-detection-service/app/ -f txt -o bandit-fraud.txt || true
@@ -62,7 +59,7 @@ pipeline {
 
         stage('Dependency Audit (Safety)') {
             steps {
-                echo '📦 Checking dependencies for vulnerabilities...'
+                echo 'Checking dependencies for vulnerabilities...'
                 sh '''
                     safety check -r transaction-service/requirements.txt --output text || true
                     safety check -r fraud-detection-service/requirements.txt --output text || true
@@ -73,39 +70,27 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                echo '🐳 Building Docker images...'
+                echo 'Building Docker images...'
                 sh '''
-                    docker compose build \
-                        transaction-service \
-                        fraud-detection-service \
-                        notification-service \
-                        frontend
+                    docker compose build transaction-service fraud-detection-service notification-service frontend
                 '''
             }
         }
 
         stage('Image Scan (Trivy)') {
             steps {
-                echo '🔬 Scanning Docker images for CVEs...'
+                echo 'Scanning Docker images for CVEs...'
                 sh '''
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL \
-                        --format table \
-                        banking-devsecops-transaction-service:latest || true
-
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL \
-                        --format table \
-                        banking-devsecops-fraud-detection-service:latest || true
-
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL \
-                        --format table \
-                        banking-devsecops-notification-service:latest || true
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL --format table banking-devsecops-transaction-service:latest || true
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL --format table banking-devsecops-fraud-detection-service:latest || true
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL --format table banking-devsecops-notification-service:latest || true
                 '''
             }
         }
 
         stage('Docker Push') {
             steps {
-                echo '📤 Pushing images to DockerHub...'
+                echo 'Pushing images to DockerHub...'
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-credentials',
                     usernameVariable: 'DOCKER_USER',
@@ -113,34 +98,19 @@ pipeline {
                 )]) {
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-
-                        # Tag images with DockerHub username
-                        docker tag banking-devsecops-transaction-service:latest \
-                            $DOCKER_USER/banking-transaction-service:latest
-                        docker tag banking-devsecops-transaction-service:latest \
-                            $DOCKER_USER/banking-transaction-service:$IMAGE_TAG
-
-                        docker tag banking-devsecops-fraud-detection-service:latest \
-                            $DOCKER_USER/banking-fraud-detection-service:latest
-                        docker tag banking-devsecops-fraud-detection-service:latest \
-                            $DOCKER_USER/banking-fraud-detection-service:$IMAGE_TAG
-
-                        docker tag banking-devsecops-notification-service:latest \
-                            $DOCKER_USER/banking-notification-service:latest
-                        docker tag banking-devsecops-notification-service:latest \
-                            $DOCKER_USER/banking-notification-service:$IMAGE_TAG
-
-                        # Push all images
+                        docker tag banking-devsecops-transaction-service:latest $DOCKER_USER/banking-transaction-service:latest
+                        docker tag banking-devsecops-transaction-service:latest $DOCKER_USER/banking-transaction-service:$IMAGE_TAG
+                        docker tag banking-devsecops-fraud-detection-service:latest $DOCKER_USER/banking-fraud-detection-service:latest
+                        docker tag banking-devsecops-fraud-detection-service:latest $DOCKER_USER/banking-fraud-detection-service:$IMAGE_TAG
+                        docker tag banking-devsecops-notification-service:latest $DOCKER_USER/banking-notification-service:latest
+                        docker tag banking-devsecops-notification-service:latest $DOCKER_USER/banking-notification-service:$IMAGE_TAG
                         docker push $DOCKER_USER/banking-transaction-service:latest
                         docker push $DOCKER_USER/banking-transaction-service:$IMAGE_TAG
-
                         docker push $DOCKER_USER/banking-fraud-detection-service:latest
                         docker push $DOCKER_USER/banking-fraud-detection-service:$IMAGE_TAG
-
                         docker push $DOCKER_USER/banking-notification-service:latest
                         docker push $DOCKER_USER/banking-notification-service:$IMAGE_TAG
-
-                        echo "✅ All images pushed to DockerHub"
+                        echo "All images pushed to DockerHub"
                         docker logout
                     '''
                 }
@@ -149,27 +119,27 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo '🚀 Deploying all services...'
-                sh '''
-            cp /home/shrey/Documents/SPE/SPE_PROJECT(1)/SPE_PROJECT/banking-devsecops/.env.docker .env.docker
-                    docker compose down || true
-                    docker compose up -d
-                    echo "✅ Deployment complete"
+                echo 'Deploying all services...'
+                sh """
+                    cp "/home/shrey/Documents/SPE/SPE_PROJECT(1)/SPE_PROJECT/banking-devsecops/.env.docker" "\$WORKSPACE/.env.docker"
+                    docker compose --env-file "\$WORKSPACE/.env.docker" down || true
+                    docker compose --env-file "\$WORKSPACE/.env.docker" up -d
+                    echo "Deployment complete"
                     docker compose ps
-                '''
+                """
             }
         }
     }
 
     post {
         success {
-            echo '✅ Pipeline completed successfully!'
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            echo '❌ Pipeline failed — check logs above'
+            echo 'Pipeline failed — check logs above'
         }
         always {
-            echo '📊 Pipeline finished'
+            echo 'Pipeline finished'
             sh 'docker logout || true'
         }
     }
