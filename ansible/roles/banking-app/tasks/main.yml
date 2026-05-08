@@ -1,0 +1,53 @@
+---
+- name: Check if project directory exists
+  stat:
+    path: "{{ project_path }}"
+  register: project_dir
+
+- name: Fail if project directory not found
+  fail:
+    msg: "Project directory {{ project_path }} not found. Please set correct project_path."
+  when: not project_dir.stat.exists
+
+- name: Check if .env.docker exists
+  stat:
+    path: "{{ project_path }}/.env.docker"
+  register: env_file
+
+- name: Fail if .env.docker not found
+  fail:
+    msg: ".env.docker file not found in {{ project_path }}"
+  when: not env_file.stat.exists
+
+- name: Stop existing containers
+  shell: docker compose down
+  args:
+    chdir: "{{ project_path }}"
+  ignore_errors: yes
+
+- name: Pull latest Docker images from DockerHub
+  shell: |
+    docker pull shrey1112/banking-transaction-service:latest
+    docker pull shrey1112/banking-fraud-detection-service:latest
+    docker pull shrey1112/banking-notification-service:latest
+  ignore_errors: yes
+
+- name: Start all services with docker compose
+  shell: docker compose up -d
+  args:
+    chdir: "{{ project_path }}"
+  become: yes
+
+- name: Wait for services to be healthy
+  pause:
+    seconds: 15
+
+- name: Check running containers
+  shell: docker compose ps
+  args:
+    chdir: "{{ project_path }}"
+  register: containers_status
+
+- name: Print container status
+  debug:
+    msg: "{{ containers_status.stdout }}"

@@ -1,0 +1,49 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  become: yes
+  ignore_errors: yes
+
+- name: Install required packages
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+  become: yes
+
+- name: Check if Docker is already installed
+  command: docker --version
+  register: docker_installed
+  ignore_errors: yes
+
+- name: Install Docker if not present
+  shell: curl -fsSL https://get.docker.com | sh
+  become: yes
+  when: docker_installed.rc != 0
+
+- name: Add user to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+  become: yes
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Verify Docker is running
+  command: docker --version
+  register: docker_version
+
+- name: Print Docker version
+  debug:
+    msg: "Docker installed: {{ docker_version.stdout }}"

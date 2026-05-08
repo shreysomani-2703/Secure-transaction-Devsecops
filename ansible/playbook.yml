@@ -1,0 +1,9 @@
+---
+- name: Setup Banking DevSecOps Application
+  hosts: banking_servers
+  vars:
+    project_path: "/home/shrey/Documents/SPE/SPE_PROJECT(1)/SPE_PROJECT/banking-devsecops"
+
+  roles:
+    - docker
+    - banking-app
