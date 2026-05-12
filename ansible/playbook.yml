@@ -2,7 +2,7 @@
 - name: Setup Banking DevSecOps Application
   hosts: banking_servers
   vars:
-    project_path: "/home/shrey/Documents/SPE/SPE_PROJECT(1)/SPE_PROJECT/banking-devsecops"
+    project_path: "{{ lookup('env', 'BANKING_PROJECT_PATH') | default(playbook_dir + '/..') }}"
 
   roles:
     - docker
