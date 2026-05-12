@@ -38,15 +38,21 @@ pipeline {
             steps {
                 echo 'Running Bandit static security analysis...'
                 sh '''
-                    bandit -r transaction-service/app/ -f txt -o bandit-transaction.txt || true
-                    bandit -r fraud-detection-service/app/ -f txt -o bandit-fraud.txt || true
-                    bandit -r notification-service/app/ -f txt -o bandit-notification.txt || true
+                    bandit -r transaction-service/app/ -f txt -o bandit-transaction.txt -l
+                    bandit -r fraud-detection-service/app/ -f txt -o bandit-fraud.txt -l
+                    bandit -r notification-service/app/ -f txt -o bandit-notification.txt -l
                     echo "=== Transaction Service ==="
                     cat bandit-transaction.txt
                     echo "=== Fraud Service ==="
                     cat bandit-fraud.txt
                     echo "=== Notification Service ==="
                     cat bandit-notification.txt
+
+                    # Fail if HIGH or CRITICAL issues found
+                    if grep -q "Severity: High\|Severity: Critical" bandit-transaction.txt bandit-fraud.txt bandit-notification.txt; then
+                        echo "HIGH or CRITICAL security issues found by Bandit. Failing pipeline."
+                        exit 1
+                    fi
                 '''
             }
             post {
@@ -60,9 +66,9 @@ pipeline {
             steps {
                 echo 'Checking dependencies for vulnerabilities...'
                 sh '''
-                    safety check -r transaction-service/requirements.txt --output text || true
-                    safety check -r fraud-detection-service/requirements.txt --output text || true
-                    safety check -r notification-service/requirements.txt --output text || true
+                    safety check -r transaction-service/requirements.txt --output text
+                    safety check -r fraud-detection-service/requirements.txt --output text
+                    safety check -r notification-service/requirements.txt --output text
                 '''
             }
         }
@@ -80,9 +86,15 @@ pipeline {
             steps {
                 echo 'Scanning Docker images for CVEs...'
                 sh '''
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL --format table banking-devsecops-transaction-service:latest || true
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL --format table banking-devsecops-fraud-detection-service:latest || true
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL --format table banking-devsecops-notification-service:latest || true
+                    # Fail pipeline if CRITICAL CVEs found
+                    trivy image --exit-code 1 --severity CRITICAL --format table banking-devsecops-transaction-service:latest
+                    trivy image --exit-code 1 --severity CRITICAL --format table banking-devsecops-fraud-detection-service:latest
+                    trivy image --exit-code 1 --severity CRITICAL --format table banking-devsecops-notification-service:latest
+
+                    # Report HIGH CVEs but do not fail
+                    trivy image --exit-code 0 --severity HIGH --format table banking-devsecops-transaction-service:latest
+                    trivy image --exit-code 0 --severity HIGH --format table banking-devsecops-fraud-detection-service:latest
+                    trivy image --exit-code 0 --severity HIGH --format table banking-devsecops-notification-service:latest
                 '''
             }
         }
@@ -134,10 +146,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Pipeline completed successfully — all security checks passed!'
         }
         failure {
-            echo 'Pipeline failed — check logs above'
+            echo 'Pipeline FAILED — fix the issues before deploying!'
         }
         always {
             echo 'Pipeline finished'
