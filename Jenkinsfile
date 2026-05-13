@@ -49,7 +49,7 @@ pipeline {
                     cat bandit-notification.txt
 
                     # Fail if HIGH or CRITICAL issues found
-                    if grep -q "Severity: High\|Severity: Critical" bandit-transaction.txt bandit-fraud.txt bandit-notification.txt; then
+                    if grep -q "Severity: High\\|Severity: Critical" bandit-transaction.txt bandit-fraud.txt bandit-notification.txt; then
                         echo "HIGH or CRITICAL security issues found by Bandit. Failing pipeline."
                         exit 1
                     fi
