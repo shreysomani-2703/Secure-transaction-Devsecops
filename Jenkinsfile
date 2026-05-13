@@ -19,19 +19,19 @@ pipeline {
                 echo 'Running unit tests for all services...'
                 sh '''
                     cd transaction-service
-                    source .venv/bin/activate
+                    . .venv/bin/activate
                     pytest tests/ -v --tb=short
                     cd ..
                     cd fraud-detection-service
-                    source .venv/bin/activate
+                    . .venv/bin/activate
                     pytest tests/ -v --tb=short
                     cd ..
                     cd notification-service
-                    source .venv/bin/activate
+                    . .venv/bin/activate
                     pytest tests/ -v --tb=short
                     cd ..
                 '''
-            }
+            }   
         }
 
         stage('SAST Scan (Bandit)') {
