@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    triggers{
+        githubPush()
+    }
+
     environment {
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
