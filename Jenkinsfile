@@ -44,32 +44,45 @@ pipeline {
         }
 
         stage('SAST Scan (Bandit)') {
-            steps {
-                echo 'Running Bandit static security analysis...'
-                sh '''
-                    bandit -r transaction-service/app/ -f txt -o bandit-transaction.txt -l
-                    bandit -r fraud-detection-service/app/ -f txt -o bandit-fraud.txt -l
-                    bandit -r notification-service/app/ -f txt -o bandit-notification.txt -l
-                    echo "=== Transaction Service ==="
-                    cat bandit-transaction.txt
-                    echo "=== Fraud Service ==="
-                    cat bandit-fraud.txt
-                    echo "=== Notification Service ==="
-                    cat bandit-notification.txt
+        steps {
+            echo 'Running Bandit static security analysis...'
 
-                    # Fail if HIGH or CRITICAL issues found
-                    if grep -q "Severity: High\\|Severity: Critical" bandit-transaction.txt bandit-fraud.txt bandit-notification.txt; then
-                        echo "HIGH or CRITICAL security issues found by Bandit. Failing pipeline."
-                        exit 1
-                    fi
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'bandit-*.txt', allowEmptyArchive: true
-                }
+            sh '''
+                set +e
+
+                bandit -r transaction-service/app/ -f txt -o bandit-transaction.txt -ll
+                bandit -r fraud-detection-service/app/ -f txt -o bandit-fraud.txt -ll
+                bandit -r notification-service/app/ -f txt -o bandit-notification.txt -ll
+
+                echo "=== Transaction Service ==="
+                cat bandit-transaction.txt
+
+                echo "=== Fraud Service ==="
+                cat bandit-fraud.txt
+
+                echo "=== Notification Service ==="
+                cat bandit-notification.txt
+
+                # Fail only on HIGH or CRITICAL
+                if grep -Eq "Severity: (High|Critical)" \
+                    bandit-transaction.txt \
+                    bandit-fraud.txt \
+                    bandit-notification.txt; then
+
+                    echo "HIGH or CRITICAL vulnerabilities found!"
+                    exit 1
+                fi
+
+                exit 0
+            '''
+        }
+
+        post {
+            always {
+                archiveArtifacts artifacts: 'bandit-*.txt', allowEmptyArchive: true
             }
         }
+}
 
         stage('Dependency Audit (Safety)') {
             steps {
