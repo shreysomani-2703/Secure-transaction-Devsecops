@@ -19,15 +19,15 @@ pipeline {
                 echo 'Running unit tests for all services...'
                 sh '''
                     cd transaction-service
-                    pip install -r requirements.txt --break-system-packages -q
+                    source .venv/bin/activate
                     pytest tests/ -v --tb=short
                     cd ..
                     cd fraud-detection-service
-                    pip install -r requirements.txt --break-system-packages -q
+                    source .venv/bin/activate
                     pytest tests/ -v --tb=short
                     cd ..
                     cd notification-service
-                    pip install -r requirements.txt --break-system-packages -q
+                    source .venv/bin/activate
                     pytest tests/ -v --tb=short
                     cd ..
                 '''
@@ -115,12 +115,26 @@ pipeline {
                         docker tag banking-devsecops-fraud-detection-service:latest $DOCKER_USER/banking-fraud-detection-service:$IMAGE_TAG
                         docker tag banking-devsecops-notification-service:latest $DOCKER_USER/banking-notification-service:latest
                         docker tag banking-devsecops-notification-service:latest $DOCKER_USER/banking-notification-service:$IMAGE_TAG
-                        docker push $DOCKER_USER/banking-transaction-service:latest
-                        docker push $DOCKER_USER/banking-transaction-service:$IMAGE_TAG
-                        docker push $DOCKER_USER/banking-fraud-detection-service:latest
-                        docker push $DOCKER_USER/banking-fraud-detection-service:$IMAGE_TAG
-                        docker push $DOCKER_USER/banking-notification-service:latest
-                        docker push $DOCKER_USER/banking-notification-service:$IMAGE_TAG
+                    '''
+                    retry(3) {
+                        sh 'docker push $DOCKER_USER/banking-transaction-service:latest'
+                    }
+                    retry(3) {
+                        sh 'docker push $DOCKER_USER/banking-transaction-service:$IMAGE_TAG'
+                    }
+                    retry(3) {
+                        sh 'docker push $DOCKER_USER/banking-fraud-detection-service:latest'
+                    }
+                    retry(3) {
+                        sh 'docker push $DOCKER_USER/banking-fraud-detection-service:$IMAGE_TAG'
+                    }
+                    retry(3) {
+                        sh 'docker push $DOCKER_USER/banking-notification-service:latest'
+                    }
+                    retry(3) {
+                        sh 'docker push $DOCKER_USER/banking-notification-service:$IMAGE_TAG'
+                    }
+                    sh '''
                         echo "All images pushed to DockerHub"
                         docker logout
                     '''
