@@ -19,15 +19,24 @@ pipeline {
                 echo 'Running unit tests for all services...'
                 sh '''
                     cd transaction-service
+                    python3 -m venv .venv
                     . .venv/bin/activate
+                    pip install -r requirements.txt
+                    pip install pytest
                     pytest tests/ -v --tb=short
                     cd ..
                     cd fraud-detection-service
+                    python3 -m venv .venv
                     . .venv/bin/activate
+                    pip install -r requirements.txt
+                    pip install pytest
                     pytest tests/ -v --tb=short
                     cd ..
                     cd notification-service
+                    python3 -m venv .venv
                     . .venv/bin/activate
+                    pip install -r requirements.txt
+                    pip install pytest
                     pytest tests/ -v --tb=short
                     cd ..
                 '''
